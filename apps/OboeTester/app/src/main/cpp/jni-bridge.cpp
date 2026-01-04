@@ -1291,6 +1291,59 @@ Java_com_mobileer_oboetester_AudioWorkloadTestActivity_close(JNIEnv *env, jobjec
     return sAudioWorkload.close();
 }
 
+// ========================================================================== HfpLoopbackActivity
+JNIEXPORT jint JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_loadAudioFile(JNIEnv *env,
+                                                                jobject instance,
+                                                                jstring filePath) {
+    const char *str = env->GetStringUTFChars(filePath, nullptr);
+    LOGD("HfpLoopbackActivity_loadAudioFile(%s)", str);
+    jint result = engine.mActivityHfpLoopback.loadAudioFile(str);
+    env->ReleaseStringUTFChars(filePath, str);
+    return result;
+}
+
+JNIEXPORT void JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_setLoopPlayback(JNIEnv *env,
+                                                                  jobject instance,
+                                                                  jboolean loop) {
+    engine.mActivityHfpLoopback.setLoopPlayback(loop);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_savePlayedWaveFile(JNIEnv *env,
+                                                                     jobject instance,
+                                                                     jstring fileName) {
+    const char *str = env->GetStringUTFChars(fileName, nullptr);
+    LOGD("HfpLoopbackActivity_savePlayedWaveFile(%s)", str);
+    jint result = engine.mActivityHfpLoopback.savePlayedWaveFile(str);
+    env->ReleaseStringUTFChars(fileName, str);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_saveRecordedWaveFile(JNIEnv *env,
+                                                                       jobject instance,
+                                                                       jstring fileName) {
+    const char *str = env->GetStringUTFChars(fileName, nullptr);
+    LOGD("HfpLoopbackActivity_saveRecordedWaveFile(%s)", str);
+    jint result = engine.mActivityHfpLoopback.saveRecordedWaveFile(str);
+    env->ReleaseStringUTFChars(fileName, str);
+    return result;
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_getPlayedFrameCount(JNIEnv *env,
+                                                                      jobject instance) {
+    return engine.mActivityHfpLoopback.getPlayedFrameCount();
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_mobileer_oboetester_HfpLoopbackActivity_getRecordedFrameCount(JNIEnv *env,
+                                                                        jobject instance) {
+    return engine.mActivityHfpLoopback.getRecordedFrameCount();
+}
+
 // Store the JavaVM pointer to get JNIEnv in JNI_OnLoad/OnUnload
 static JavaVM* g_javaVM = nullptr;
 

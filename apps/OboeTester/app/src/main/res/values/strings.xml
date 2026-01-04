@@ -265,6 +265,19 @@
     <string name="title_audio_workload_test">Audio Workload Test</string>
     <string name="title_audio_workload_test_runner">Audio Workload Test Runner</string>
     <string name="title_reverse_jni">Reverse JNI</string>
+    <string name="title_activity_hfp_loopback">HFP Loopback</string>
+    <string name="hfp_audio_file_section">Audio File</string>
+    <string name="hfp_select_audio_file">Select Audio File</string>
+    <string name="hfp_no_file_selected">No file selected</string>
+    <string name="hfp_export_played">Export Played</string>
+    <string name="hfp_export_recorded">Export Recorded</string>
+    <string name="hfp_instructions">
+        &#160;1. Select an audio file to play\n
+        2. Enable Bluetooth SCO for HFP device\n
+        3. Configure input/output streams\n
+        4. Start to begin playback and recording\n
+        5. Stop and export both files when done\n
+    </string>
 
     <string name="need_record_audio_permission">"This app needs RECORD_AUDIO permission"</string>
     <string name="share">Share</string>

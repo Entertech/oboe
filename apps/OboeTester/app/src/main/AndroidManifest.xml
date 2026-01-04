@@ -149,6 +149,11 @@
             android:label="@string/title_reverse_jni"
             android:exported="true"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".HfpLoopbackActivity"
+            android:label="@string/title_activity_hfp_loopback"
+            android:exported="true"
+            android:screenOrientation="portrait" />
 
         <service
             android:name=".MidiTapTester"

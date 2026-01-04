@@ -51,6 +51,7 @@
 
 #include "FullDuplexAnalyzer.h"
 #include "FullDuplexEcho.h"
+#include "FullDuplexHfpLoopback.h"
 #include "analyzer/GlitchAnalyzer.h"
 #include "analyzer/DataPathAnalyzer.h"
 #include "InputStreamCallbackAnalyzer.h"
@@ -825,6 +826,56 @@ private:
 };
 
 /**
+ * HFP Loopback - play audio file through HFP while recording from microphone
+ */
+class ActivityHfpLoopback : public ActivityFullDuplex {
+public:
+
+    oboe::Result startStreams() override {
+        return mFullDuplexHfpLoopback->start();
+    }
+
+    void configureBuilder(bool isInput, oboe::AudioStreamBuilder &builder) override;
+
+    double getPeakLevel(int index) override {
+        return mFullDuplexHfpLoopback->getPeakLevel(index);
+    }
+
+    FullDuplexAnalyzer *getFullDuplexAnalyzer() override {
+        return (FullDuplexAnalyzer *) mFullDuplexHfpLoopback.get();
+    }
+
+    int32_t loadAudioFile(const char *filePath);
+
+    void setLoopPlayback(bool loop) {
+        if (mFullDuplexHfpLoopback) {
+            mFullDuplexHfpLoopback->setLoopPlayback(loop);
+        }
+    }
+
+    int64_t getPlayedFrameCount() {
+        return mFullDuplexHfpLoopback ? mFullDuplexHfpLoopback->getPlayedFrameCount() : 0;
+    }
+
+    int64_t getRecordedFrameCount() {
+        return mFullDuplexHfpLoopback ? mFullDuplexHfpLoopback->getRecordedFrameCount() : 0;
+    }
+
+    int32_t savePlayedWaveFile(const char *filename);
+    int32_t saveRecordedWaveFile(const char *filename);
+
+protected:
+    void finishOpen(bool isInput, std::shared_ptr<oboe::AudioStream> &oboeStream) override;
+
+private:
+    std::unique_ptr<FullDuplexHfpLoopback> mFullDuplexHfpLoopback{};
+    std::vector<float> mLoadedAudioData;
+    int32_t mLoadedAudioFrames = 0;
+    int32_t mLoadedAudioChannels = 0;
+    int32_t mLoadedAudioSampleRate = 0;
+};
+
+/**
  * Global context for native tests.
  * Switch between various ActivityContexts.
  */
@@ -867,6 +918,9 @@ public:
             case ActivityType::DataPath:
                 currentActivity = &mActivityDataPath;
                 break;
+            case ActivityType::HfpLoopback:
+                currentActivity = &mActivityHfpLoopback;
+                break;
         }
     }
 
@@ -883,10 +937,11 @@ public:
     ActivityGlitches             mActivityGlitches;
     ActivityDataPath             mActivityDataPath;
     ActivityTestDisconnect       mActivityTestDisconnect;
+    ActivityHfpLoopback          mActivityHfpLoopback;
 
 private:
 
-    // WARNING - must match definitions in TestAudioActivity.java
+    // WARNING - must match definitions in TestAudioActivity.java and HfpLoopbackActivity.java
     enum ActivityType {
         Undefined = -1,
         TestOutput = 0,
@@ -898,6 +953,8 @@ private:
         Glitches = 6,
         TestDisconnect = 7,
         DataPath = 8,
+        DynamicWorkload = 9,
+        HfpLoopback = 10,
     };
 
     ActivityType                 mActivityType = ActivityType::Undefined;

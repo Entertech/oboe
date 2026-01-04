@@ -915,3 +915,197 @@ void ActivityTestDisconnect::configureAfterOpen() {
     oboeCallbackProxy->setDataCallback(&audioStreamGateway);
 }
 
+// ======================================================================= ActivityHfpLoopback
+void ActivityHfpLoopback::configureBuilder(bool isInput, oboe::AudioStreamBuilder &builder) {
+    ActivityFullDuplex::configureBuilder(isInput, builder);
+
+    if (mFullDuplexHfpLoopback.get() == nullptr) {
+        mFullDuplexHfpLoopback = std::make_unique<FullDuplexHfpLoopback>();
+    }
+    if (!isInput) {
+        // only output uses a callback, input is polled
+        builder.setCallback((oboe::AudioStreamCallback *) oboeCallbackProxy.get());
+        oboeCallbackProxy->setDataCallback(mFullDuplexHfpLoopback.get());
+    }
+}
+
+void ActivityHfpLoopback::finishOpen(bool isInput, std::shared_ptr<oboe::AudioStream> &oboeStream) {
+    if (isInput) {
+        mFullDuplexHfpLoopback->setSharedInputStream(oboeStream);
+    } else {
+        mFullDuplexHfpLoopback->setSharedOutputStream(oboeStream);
+        // Load the audio data into the full duplex processor
+        if (!mLoadedAudioData.empty()) {
+            mFullDuplexHfpLoopback->loadAudioData(
+                    mLoadedAudioData.data(),
+                    mLoadedAudioFrames,
+                    mLoadedAudioChannels,
+                    mLoadedAudioSampleRate);
+        }
+    }
+}
+
+int32_t ActivityHfpLoopback::loadAudioFile(const char *filePath) {
+    // Simple WAV file loader - supports 16-bit PCM WAV files
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file.is_open()) {
+        LOGE("ActivityHfpLoopback::loadAudioFile() - failed to open file: %s", filePath);
+        return -1;
+    }
+
+    // Read WAV header
+    char riff[4];
+    file.read(riff, 4);
+    if (strncmp(riff, "RIFF", 4) != 0) {
+        LOGE("ActivityHfpLoopback::loadAudioFile() - not a RIFF file");
+        return -2;
+    }
+
+    uint32_t fileSize;
+    file.read(reinterpret_cast<char*>(&fileSize), 4);
+
+    char wave[4];
+    file.read(wave, 4);
+    if (strncmp(wave, "WAVE", 4) != 0) {
+        LOGE("ActivityHfpLoopback::loadAudioFile() - not a WAVE file");
+        return -3;
+    }
+
+    // Find fmt chunk
+    char chunkId[4];
+    uint32_t chunkSize;
+    bool foundFmt = false;
+    uint16_t audioFormat = 0;
+    uint16_t numChannels = 0;
+    uint32_t sampleRate = 0;
+    uint16_t bitsPerSample = 0;
+
+    while (file.read(chunkId, 4) && file.read(reinterpret_cast<char*>(&chunkSize), 4)) {
+        if (strncmp(chunkId, "fmt ", 4) == 0) {
+            file.read(reinterpret_cast<char*>(&audioFormat), 2);
+            file.read(reinterpret_cast<char*>(&numChannels), 2);
+            file.read(reinterpret_cast<char*>(&sampleRate), 4);
+            uint32_t byteRate;
+            file.read(reinterpret_cast<char*>(&byteRate), 4);
+            uint16_t blockAlign;
+            file.read(reinterpret_cast<char*>(&blockAlign), 2);
+            file.read(reinterpret_cast<char*>(&bitsPerSample), 2);
+
+            // Skip any extra format bytes
+            if (chunkSize > 16) {
+                file.seekg(chunkSize - 16, std::ios::cur);
+            }
+            foundFmt = true;
+        } else if (strncmp(chunkId, "data", 4) == 0 && foundFmt) {
+            // Found data chunk
+            int32_t numSamples = chunkSize / (bitsPerSample / 8);
+            int32_t numFrames = numSamples / numChannels;
+
+            mLoadedAudioData.resize(numSamples);
+            mLoadedAudioFrames = numFrames;
+            mLoadedAudioChannels = numChannels;
+            mLoadedAudioSampleRate = sampleRate;
+
+            if (audioFormat == 1 && bitsPerSample == 16) {
+                // 16-bit PCM
+                std::vector<int16_t> rawData(numSamples);
+                file.read(reinterpret_cast<char*>(rawData.data()), chunkSize);
+                for (int32_t i = 0; i < numSamples; i++) {
+                    mLoadedAudioData[i] = rawData[i] / 32768.0f;
+                }
+            } else if (audioFormat == 3 && bitsPerSample == 32) {
+                // 32-bit float
+                file.read(reinterpret_cast<char*>(mLoadedAudioData.data()), chunkSize);
+            } else {
+                LOGE("ActivityHfpLoopback::loadAudioFile() - unsupported format: %d, bits: %d",
+                     audioFormat, bitsPerSample);
+                return -4;
+            }
+
+            LOGD("ActivityHfpLoopback::loadAudioFile() - loaded %d frames, %d channels, %d Hz",
+                 numFrames, numChannels, sampleRate);
+            return numFrames;
+        } else {
+            // Skip unknown chunk
+            file.seekg(chunkSize, std::ios::cur);
+        }
+    }
+
+    LOGE("ActivityHfpLoopback::loadAudioFile() - could not find data chunk");
+    return -5;
+}
+
+int32_t ActivityHfpLoopback::savePlayedWaveFile(const char *filename) {
+    if (mFullDuplexHfpLoopback == nullptr) {
+        LOGW("ActivityHfpLoopback::savePlayedWaveFile() - no full duplex processor");
+        return -1;
+    }
+    MultiChannelRecording *recording = mFullDuplexHfpLoopback->getPlayedRecording();
+    if (recording == nullptr || recording->getSizeInFrames() == 0) {
+        LOGW("ActivityHfpLoopback::savePlayedWaveFile() - no recording data");
+        return -2;
+    }
+
+    MyOboeOutputStream outStream;
+    WaveFileWriter writer(&outStream);
+    writer.setFrameRate(getOutputStream() ? getOutputStream()->getSampleRate() : 48000);
+    writer.setSamplesPerFrame(recording->getChannelCount());
+    writer.setBitsPerSample(24);
+    writer.setFrameCount(recording->getSizeInFrames());
+
+    std::vector<float> buffer(recording->getChannelCount());
+    recording->rewind();
+    for (int32_t frameIndex = 0; frameIndex < recording->getSizeInFrames(); frameIndex++) {
+        recording->read(buffer.data(), 1);
+        for (int32_t i = 0; i < recording->getChannelCount(); i++) {
+            writer.write(buffer[i]);
+        }
+    }
+    writer.close();
+
+    if (outStream.length() > 0) {
+        auto myfile = std::ofstream(filename, std::ios::out | std::ios::binary);
+        myfile.write((char *) outStream.getData(), outStream.length());
+        myfile.close();
+    }
+
+    return outStream.length();
+}
+
+int32_t ActivityHfpLoopback::saveRecordedWaveFile(const char *filename) {
+    if (mFullDuplexHfpLoopback == nullptr) {
+        LOGW("ActivityHfpLoopback::saveRecordedWaveFile() - no full duplex processor");
+        return -1;
+    }
+    MultiChannelRecording *recording = mFullDuplexHfpLoopback->getRecordedRecording();
+    if (recording == nullptr || recording->getSizeInFrames() == 0) {
+        LOGW("ActivityHfpLoopback::saveRecordedWaveFile() - no recording data");
+        return -2;
+    }
+
+    MyOboeOutputStream outStream;
+    WaveFileWriter writer(&outStream);
+    writer.setFrameRate(getInputStream() ? getInputStream()->getSampleRate() : 48000);
+    writer.setSamplesPerFrame(recording->getChannelCount());
+    writer.setBitsPerSample(24);
+    writer.setFrameCount(recording->getSizeInFrames());
+
+    std::vector<float> buffer(recording->getChannelCount());
+    recording->rewind();
+    for (int32_t frameIndex = 0; frameIndex < recording->getSizeInFrames(); frameIndex++) {
+        recording->read(buffer.data(), 1);
+        for (int32_t i = 0; i < recording->getChannelCount(); i++) {
+            writer.write(buffer[i]);
+        }
+    }
+    writer.close();
+
+    if (outStream.length() > 0) {
+        auto myfile = std::ofstream(filename, std::ios::out | std::ios::binary);
+        myfile.write((char *) outStream.getData(), outStream.length());
+        myfile.close();
+    }
+
+    return outStream.length();
+}
+

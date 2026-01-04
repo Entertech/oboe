@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    tools:context="com.mobileer.oboetester.HfpLoopbackActivity">
+
+    <LinearLayout
+        android:id="@+id/title_bar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:orientation="horizontal"
+        android:elevation="4dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title_activity_hfp_loopback"
+            android:textColor="@android:color/black"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@+id/title_bar">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="@dimen/activity_horizontal_margin"
+            android:paddingRight="@dimen/activity_horizontal_margin">
+
+            <!-- Input Stream Configuration -->
+            <com.mobileer.oboetester.StreamConfigurationView
+                android:id="@+id/inputStreamConfiguration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal" />
+
+            <!-- Output Stream Configuration -->
+            <com.mobileer.oboetester.StreamConfigurationView
+                android:id="@+id/outputStreamConfiguration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal" />
+
+            <!-- Communication Device Selection -->
+            <com.mobileer.oboetester.CommunicationDeviceView
+                android:id="@+id/comm_device_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal" />
+
+            <!-- File Selection -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                android:padding="8dp"
+                android:background="@android:drawable/dialog_holo_light_frame">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hfp_audio_file_section"
+                    android:textStyle="bold"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/button_select_file"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:onClick="onSelectFile"
+                    android:text="@string/hfp_select_audio_file" />
+
+                <TextView
+                    android:id="@+id/text_file_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hfp_no_file_selected"
+                    android:textSize="12sp"
+                    android:padding="4dp" />
+            </LinearLayout>
+
+            <!-- Control Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/button_start_hfp"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:onClick="onStartHfpLoopback"
+                    android:text="@string/startAudio" />
+
+                <Button
+                    android:id="@+id/button_stop_hfp"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:onClick="onStopHfpLoopback"
+                    android:text="@string/stopAudio" />
+            </LinearLayout>
+
+            <!-- Export Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/button_export_played"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:onClick="onExportPlayed"
+                    android:text="@string/hfp_export_played" />
+
+                <Button
+                    android:id="@+id/button_export_recorded"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:onClick="onExportRecorded"
+                    android:text="@string/hfp_export_recorded" />
+            </LinearLayout>
+
+            <!-- Volume Bars for Input Level -->
+            <com.mobileer.oboetester.VolumeBarView
+                android:id="@+id/volumeBar0"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp"
+                android:layout_width="fill_parent"
+                android:layout_height="20dp" />
+
+            <com.mobileer.oboetester.VolumeBarView
+                android:id="@+id/volumeBar1"
+                android:layout_marginBottom="4dp"
+                android:layout_width="fill_parent"
+                android:layout_height="20dp" />
+
+            <!-- Status Display -->
+            <TextView
+                android:id="@+id/text_hfp_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lines="10"
+                android:text="@string/hfp_instructions"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="8dp"
+                android:background="@android:drawable/dialog_holo_light_frame" />
+
+        </LinearLayout>
+
+    </ScrollView>
+</LinearLayout>
